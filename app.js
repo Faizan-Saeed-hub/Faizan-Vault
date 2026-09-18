@@ -297,17 +297,22 @@ class VaultixApp {
       await this.db.init();
       const existingItems = await this.db.getAll();
 
-      if (!existingItems || existingItems.length === 0) {
-        // Seed default items from window.DEFAULT_GALLERY_ITEMS in data.js
-        console.log('Seeding initial items from data.js...');
-        const defaults = window.DEFAULT_GALLERY_ITEMS || [];
-        for (const item of defaults) {
-          await this.db.put(item);
+      // Purge any legacy sample or default items from previous test sessions
+      const cleanExisting = (existingItems || []).filter(item => {
+        const isLegacySample = item.isDefault || 
+          (typeof item.id === 'string' && (item.id.startsWith('item-default-') || item.id === 'test-sync-1'));
+        return !isLegacySample;
+      });
+
+      if (existingItems && existingItems.length !== cleanExisting.length) {
+        for (const item of existingItems) {
+          if (item.isDefault || (typeof item.id === 'string' && (item.id.startsWith('item-default-') || item.id === 'test-sync-1'))) {
+            await this.db.delete(item.id);
+          }
         }
-        this.items = defaults;
-      } else {
-        this.items = existingItems;
       }
+
+      this.items = cleanExisting;
 
       this.setupEventListeners();
       this.updateCloudinaryUIStatus();
@@ -1754,76 +1759,49 @@ class VaultixApp {
         return;
       }
 
-      const cloudItems = Array.isArray(cloudData) ? cloudData : (cloudData && Array.isArray(cloudData.items) ? cloudData.items : null);
-      if (!cloudItems) return;
+      const rawCloudItems = Array.isArray(cloudData) ? cloudData : (cloudData && Array.isArray(cloudData.items) ? cloudData.items : null);
+      if (!rawCloudItems) return;
 
-      if (cloudData.featuredCardId) {
-        this.featuredCardId = cloudData.featuredCardId;
-      }
+      // Filter out any stale/sample items
+      const cloudItems = rawCloudItems.filter(c => !c.isDefault && !(typeof c.id === 'string' && (c.id.startsWith('item-default-') || c.id === 'test-sync-1')));
 
-      // Smart merge: preserve any local buffers and merge new cloud items
+      this.featuredCardId = cloudData.featuredCardId || null;
+
+      const cloudIdSet = new Set(cloudItems.map(c => c.id));
       let hasChanges = false;
-      const localMap = new Map();
-      for (const item of this.items) {
-        localMap.set(item.id, item);
+
+      // 1. Remove local items that do not exist in cloud snapshot (or sample items)
+      for (const localItem of [...this.items]) {
+        if (!cloudIdSet.has(localItem.id)) {
+          await this.db.delete(localItem.id);
+          hasChanges = true;
+        }
       }
 
+      // 2. Put / update cloud items into local DB
+      const mergedList = [];
       for (const cloudItem of cloudItems) {
-        const local = localMap.get(cloudItem.id);
-        if (!local) {
-          // New item from another device (laptop -> mobile or mobile -> laptop)
-          localMap.set(cloudItem.id, cloudItem);
-          await this.db.put(cloudItem);
-          hasChanges = true;
-        } else {
-          // Preserve local base64 buffers if present locally
-          let updated = false;
-          if (local.localDataUrl && !cloudItem.localDataUrl) {
-            cloudItem.localDataUrl = local.localDataUrl;
-            updated = true;
-          }
-          if (local.frontDataUrl && !cloudItem.frontDataUrl) {
-            cloudItem.frontDataUrl = local.frontDataUrl;
-            updated = true;
-          }
-          if (local.backDataUrl && !cloudItem.backDataUrl) {
-            cloudItem.backDataUrl = local.backDataUrl;
-            updated = true;
-          }
-          if (cloudItem.title !== local.title || 
-              cloudItem.cloudinaryUrl !== local.cloudinaryUrl || 
-              cloudItem.cloudinaryFrontUrl !== local.cloudinaryFrontUrl || 
-              cloudItem.cloudinaryBackUrl !== local.cloudinaryBackUrl) {
-            updated = true;
-          }
-          if (updated) {
-            localMap.set(cloudItem.id, { ...local, ...cloudItem });
-            await this.db.put(localMap.get(cloudItem.id));
+        const local = this.items.find(i => i.id === cloudItem.id);
+        const itemToSave = { ...cloudItem };
+        if (local) {
+          if (local.localDataUrl && !itemToSave.localDataUrl) itemToSave.localDataUrl = local.localDataUrl;
+          if (local.frontDataUrl && !itemToSave.frontDataUrl) itemToSave.frontDataUrl = local.frontDataUrl;
+          if (local.backDataUrl && !itemToSave.backDataUrl) itemToSave.backDataUrl = local.backDataUrl;
+          if (local.title !== itemToSave.title || local.cloudinaryUrl !== itemToSave.cloudinaryUrl) {
             hasChanges = true;
           }
+        } else {
+          hasChanges = true;
         }
+        await this.db.put(itemToSave);
+        mergedList.push(itemToSave);
       }
 
-      // If local device has custom items that are not in cloud yet, push to cloud!
-      let localHasNewItems = false;
-      for (const [id, localItem] of localMap.entries()) {
-        const inCloud = cloudItems.some(c => c.id === id);
-        if (!inCloud && !localItem.isDefault) {
-          localHasNewItems = true;
-        }
-      }
+      this.items = mergedList;
+      this.refreshUI();
 
-      if (hasChanges || localHasNewItems) {
-        this.items = Array.from(localMap.values());
-        this.refreshUI();
-        if (localHasNewItems) {
-          await this.syncVaultToCloud(true);
-        }
-        if (notify || hasChanges) {
-          this.showToast(`☁️ Cloud Vault Synced! (${this.items.length} items live)`, 'success');
-        }
-      } else if (notify) {
-        this.showToast('☁️ Vault is up to date with cloud!', 'info');
+      if (notify || hasChanges) {
+        this.showToast(`☁️ Cloud Vault Synced! (${this.items.length} items live)`, 'success');
       }
     } catch (err) {
       console.warn('Error fetching cloud sync from Supabase:', err);
@@ -1908,6 +1886,23 @@ class VaultixApp {
 
       this.refreshUI();
       this.syncVaultToCloud(true);
+
+      // Also delete from Supabase vault_items table
+      try {
+        const supaCfg = this.getSupabaseConfig();
+        const headers = this.getSupabaseHeaders();
+        if (supaCfg && headers) {
+          const email = (window.VAULTIX_CONFIG?.auth?.email || 'Faizan0687@gmail.com').trim();
+          const base = supaCfg.url.replace(/\/$/, '');
+          fetch(`${base}/rest/v1/vault_items?id=eq.${encodeURIComponent(id)}&user_email=eq.${encodeURIComponent(email)}`, {
+            method: 'DELETE',
+            headers
+          }).catch(e => console.warn('Supabase row delete note:', e));
+        }
+      } catch (cloudErr) {
+        console.warn('Error deleting row from Supabase:', cloudErr);
+      }
+
       this.showToast(`Deleted "${itemToDelete.title}"`, 'info', true);
     } catch (err) {
       this.showToast('Error deleting item: ' + err.message, 'error');
@@ -2244,20 +2239,69 @@ class VaultixApp {
   }
 
   async confirmResetDefaults() {
-    const confirmed = confirm('Do you want to restore default items configured in data.js? This will reload sample ID cards, photos, videos, and PDFs.');
+    const confirmed = confirm('Are you sure you want to reset your vault? This will completely clear all items from your device and cloud storage.');
     if (!confirmed) return;
 
     try {
       await this.db.clear();
-      const defaults = window.DEFAULT_GALLERY_ITEMS || [];
-      for (const item of defaults) {
-        await this.db.put(item);
-      }
-      this.items = defaults;
+      this.items = [];
       this.featuredCardId = null;
       this.refreshUI();
-      this.syncVaultToCloud(true);
-      this.showToast('Reset to default items successfully!', 'success');
+
+      // Reset Supabase cloud backend
+      const supaCfg = this.getSupabaseConfig();
+      const headers = this.getSupabaseHeaders();
+      if (supaCfg && headers) {
+        const email = (window.VAULTIX_CONFIG?.auth?.email || 'Faizan0687@gmail.com').trim();
+        const base = supaCfg.url.replace(/\/$/, '');
+
+        // 1. Delete all items from vault_items table
+        try {
+          await fetch(`${base}/rest/v1/vault_items?user_email=eq.${encodeURIComponent(email)}`, {
+            method: 'DELETE',
+            headers
+          });
+        } catch (e) {
+          console.warn('Backend items deletion note:', e);
+        }
+
+        // 2. Clear vault_registry snapshot
+        try {
+          const emptyPayload = {
+            version: 2,
+            updatedAt: Date.now(),
+            featuredCardId: null,
+            items: []
+          };
+          const regRecord = {
+            user_email: email,
+            title: 'faizan_vault_registry',
+            content: JSON.stringify(emptyPayload),
+            status: 'synced'
+          };
+          const regQuery = `${base}/rest/v1/vault_registry?title=eq.faizan_vault_registry&user_email=eq.${encodeURIComponent(email)}`;
+          const checkRes = await fetch(regQuery, { headers });
+          const rows = checkRes.ok ? await checkRes.json() : [];
+          if (Array.isArray(rows) && rows.length > 0) {
+            await fetch(`${base}/rest/v1/vault_registry?id=eq.${rows[0].id}`, {
+              method: 'PATCH',
+              headers,
+              body: JSON.stringify(regRecord)
+            });
+          } else {
+            await fetch(`${base}/rest/v1/vault_registry`, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify(regRecord)
+            });
+          }
+        } catch (e) {
+          console.warn('Backend registry clear note:', e);
+        }
+      }
+
+      localStorage.setItem('vaultix_last_sync_time', Date.now().toString());
+      this.showToast('Vault reset successfully! All items cleared.', 'success');
     } catch (err) {
       this.showToast('Reset error: ' + err.message, 'error');
     }
