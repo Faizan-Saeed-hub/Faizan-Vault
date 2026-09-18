@@ -760,19 +760,31 @@ class VaultixApp {
         <div class="video-play-indicator">▶</div>
       `;
     } else if (item.category === 'document') {
-      mediaHtml = `
-        <div class="doc-thumbnail-preview">
-          <div class="doc-paper-icon">
-            <span class="doc-icon-glyph">📄</span>
+      const hasThumb = item.thumbnailUrl || (item.fileUrl && item.fileUrl.includes('res.cloudinary.com') && item.fileUrl.toLowerCase().endsWith('.pdf'));
+      const thumbSrc = item.thumbnailUrl || (hasThumb ? item.fileUrl.replace(/\.pdf(\?.*)?$/i, '.jpg') : '');
+
+      if (thumbSrc) {
+        mediaHtml = `
+          <img src="${thumbSrc}" alt="${this.escapeHtml(item.title)}" loading="lazy" style="object-fit: cover; width: 100%; height: 100%; background: #1e293b;">
+          <div class="pdf-card-badge-overlay">
+            <span>📑 PDF</span>
           </div>
-          <span style="font-size: 0.82rem; font-weight: 700; color: #ffffff; max-width: 220px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
-            ${this.escapeHtml(item.title)}
-          </span>
-          <span style="font-size: 0.72rem; color: #94a3b8; margin-top: 0.2rem;">
-            ${item.fileSize || 'PDF Document'}
-          </span>
-        </div>
-      `;
+        `;
+      } else {
+        mediaHtml = `
+          <div class="doc-thumbnail-preview">
+            <div class="doc-paper-icon">
+              <span class="doc-icon-glyph">📄</span>
+            </div>
+            <span style="font-size: 0.82rem; font-weight: 700; color: #ffffff; max-width: 220px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+              ${this.escapeHtml(item.title)}
+            </span>
+            <span style="font-size: 0.72rem; color: #38bdf8; margin-top: 0.2rem; font-weight: 600;">
+              ${item.fileSize || 'PDF Document'} • Click to Read
+            </span>
+          </div>
+        `;
+      }
     }
 
     // Tags rendering
@@ -1010,16 +1022,71 @@ class VaultixApp {
       `;
 
     } else if (item.category === 'document') {
-      // PDF or Document viewer
+      // PDF or Document interactive in-app viewer
+      const pdfSourceUrl = item.localDataUrl ? this.createBlobUrlFromData(item.localDataUrl) : item.fileUrl;
+      const hasCloudinaryPdf = item.fileUrl && item.fileUrl.includes('res.cloudinary.com') && item.fileUrl.toLowerCase().endsWith('.pdf');
+      const cloudJpgThumb = hasCloudinaryPdf ? item.fileUrl.replace(/\.pdf(\?.*)?$/i, '.jpg') : '';
+
       stage.innerHTML = `
-        <div style="width: 100%; height: 100%; display: flex; flex-direction: column; background: #111827; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
-          <div style="padding: 0.8rem 1.2rem; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.08);">
-            <span style="font-weight: 700; color: #38bdf8; font-size: 0.9rem;">📑 PDF Document Reader View</span>
-            <a href="${item.fileUrl}" download="${item.title}" class="btn btn-secondary btn-sm" target="_blank">Open in Browser ↗</a>
+        <div class="pdf-viewer-wrapper">
+          <div class="pdf-viewer-header">
+            <div class="pdf-header-info">
+              <span class="pdf-header-icon">📑</span>
+              <div>
+                <div class="pdf-header-title">${this.escapeHtml(item.title)}</div>
+                <div class="pdf-header-sub">Interactive In-App PDF Reader • ${item.fileSize || 'PDF Document'}</div>
+              </div>
+            </div>
+            <div class="pdf-header-actions">
+              <button class="btn btn-primary btn-sm" id="lightboxPdfDownloadDirectBtn" title="Instant Direct Download (No Password Required)">
+                <span>⬇️</span>
+                <span>Download PDF</span>
+              </button>
+              <button class="btn btn-secondary btn-sm" id="lightboxPdfPrintBtn" title="Print Document">
+                <span>🖨️</span>
+                <span>Print</span>
+              </button>
+              <a href="${pdfSourceUrl}" target="_blank" class="btn btn-secondary btn-sm" title="Open in New Window">
+                <span>↗️</span>
+                <span>Full Tab</span>
+              </a>
+            </div>
           </div>
-          <iframe src="${item.fileUrl}" style="width: 100%; height: 100%; border: none;"></iframe>
+          <div class="pdf-frame-container">
+            <iframe id="pdfEmbeddedIframe" src="${pdfSourceUrl}#toolbar=1&navpanes=1" title="${this.escapeHtml(item.title)}" allowfullscreen></iframe>
+          </div>
+          ${!item.localDataUrl && hasCloudinaryPdf ? `
+            <div class="pdf-fallback-notice">
+              <span>💡 <strong>Cloudinary Notice:</strong> If your download prompts for username/password, Cloudinary has restricted PDF delivery enabled by default. Uncheck "PDF and ZIP files delivery: Restricted" in Cloudinary Settings ➔ Security, or re-upload the document for offline instant download.</span>
+              ${cloudJpgThumb ? `<a href="${cloudJpgThumb}" target="_blank" style="color:#38bdf8; text-decoration:underline; font-weight:600;">View Page 1 Preview Image ↗</a>` : ''}
+            </div>
+          ` : ''}
         </div>
       `;
+
+      const directDownloadBtn = document.getElementById('lightboxPdfDownloadDirectBtn');
+      if (directDownloadBtn) {
+        directDownloadBtn.addEventListener('click', () => {
+          this.downloadItem(item);
+        });
+      }
+
+      const printBtn = document.getElementById('lightboxPdfPrintBtn');
+      if (printBtn) {
+        printBtn.addEventListener('click', () => {
+          const iframe = document.getElementById('pdfEmbeddedIframe');
+          if (iframe && iframe.contentWindow) {
+            try {
+              iframe.contentWindow.focus();
+              iframe.contentWindow.print();
+              return;
+            } catch (err) {
+              console.warn('Iframe print blocked, opening window', err);
+            }
+          }
+          window.open(pdfSourceUrl, '_blank');
+        });
+      }
     }
   }
 
@@ -1168,6 +1235,8 @@ class VaultixApp {
 
         newItem.frontUrl = frontFinalUrl;
         newItem.backUrl = backFinalUrl;
+        newItem.frontDataUrl = this.pendingFrontData;
+        newItem.backDataUrl = this.pendingBackData;
         newItem.cardNumber = this.dom.idCardNumberInput.value.trim() || 'Not specified';
         newItem.expiryDate = this.dom.idCardExpiryInput.value || 'Lifetime';
         newItem.fileSize = '1.2 MB';
@@ -1200,9 +1269,15 @@ class VaultixApp {
         }
 
         newItem.fileUrl = finalFileUrl;
-        newItem.fileType = this.pendingGeneralFile ? this.pendingGeneralFile.type : '';
+        newItem.localDataUrl = this.pendingGeneralData;
+        newItem.fileName = this.pendingGeneralFile ? this.pendingGeneralFile.name : (title + (category === 'document' ? '.pdf' : ''));
+        newItem.fileType = this.pendingGeneralFile ? this.pendingGeneralFile.type : (category === 'document' ? 'application/pdf' : '');
         newItem.fileSize = finalFileSize;
         newItem.storageType = isCloudinaryActive ? 'cloudinary' : 'local';
+
+        if (category === 'document' && isCloudinaryActive && finalFileUrl && finalFileUrl.includes('.pdf')) {
+          newItem.thumbnailUrl = finalFileUrl.replace(/\.pdf(\?.*)?$/i, '.jpg');
+        }
       }
 
       await this.db.put(newItem);
@@ -1472,9 +1547,37 @@ class VaultixApp {
     if (item.category === 'idcard') {
       // Default to combined single-page image for ID cards
       this.downloadIdCardCombinedImage(item);
-    } else if (item.fileUrl) {
-      const ext = item.fileType ? item.fileType.split('/')[1] : 'bin';
-      this.downloadFile(item.fileUrl, `${item.title}.${ext}`);
+    } else {
+      let ext = 'bin';
+      if (item.fileType) {
+        if (item.fileType.includes('pdf')) ext = 'pdf';
+        else if (item.fileType.includes('png')) ext = 'png';
+        else if (item.fileType.includes('jpeg') || item.fileType.includes('jpg')) ext = 'jpg';
+        else if (item.fileType.includes('mp4')) ext = 'mp4';
+        else ext = item.fileType.split('/')[1] || 'bin';
+      } else if (item.category === 'document') {
+        ext = 'pdf';
+      } else if (item.category === 'photo') {
+        ext = 'jpg';
+      } else if (item.category === 'video') {
+        ext = 'mp4';
+      }
+
+      let filename = `${(item.title || 'download').trim().replace(/\s+/g, '_')}`;
+      if (!filename.toLowerCase().endsWith(`.${ext}`)) {
+        filename += `.${ext}`;
+      }
+
+      // If we have local Data URL, download via Blob so IDM avoids Cloudinary 401 and never prompts for credentials!
+      if (item.localDataUrl) {
+        this.downloadBlobOrDataUrl(item.localDataUrl, filename);
+        return;
+      }
+
+      // If remote / Cloudinary URL
+      if (item.fileUrl) {
+        this.downloadFile(item.fileUrl, filename);
+      }
     }
   }
 
@@ -1625,6 +1728,57 @@ class VaultixApp {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+  }
+
+  createBlobUrlFromData(dataUrl) {
+    try {
+      if (typeof dataUrl === 'string' && dataUrl.startsWith('data:')) {
+        const parts = dataUrl.split(',');
+        const mimeMatch = parts[0].match(/:(.*?);/);
+        const mime = mimeMatch ? mimeMatch[1] : 'application/pdf';
+        const bstr = atob(parts[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        const blob = new Blob([u8arr], { type: mime });
+        return URL.createObjectURL(blob);
+      }
+    } catch (e) {
+      console.warn('Error creating Blob URL:', e);
+    }
+    return dataUrl;
+  }
+
+  downloadBlobOrDataUrl(dataUrl, filename) {
+    try {
+      if (typeof dataUrl === 'string' && dataUrl.startsWith('data:')) {
+        const parts = dataUrl.split(',');
+        const mimeMatch = parts[0].match(/:(.*?);/);
+        const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+        const bstr = atob(parts[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        const blob = new Blob([u8arr], { type: mime });
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
+        this.showToast(`Downloaded: ${filename}`, 'success');
+        return;
+      }
+    } catch (e) {
+      console.warn('Error in downloadBlobOrDataUrl:', e);
+    }
+    this.downloadFile(dataUrl, filename);
   }
 
   // =========================================================================

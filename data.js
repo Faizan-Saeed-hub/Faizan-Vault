@@ -180,6 +180,9 @@ const SAMPLE_ID_BACK_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.or
   </g>
 </svg>`;
 
+// Sample PDF Data URL for instant in-app preview
+const SAMPLE_CERTIFICATE_PDF_DATA = 'data:application/pdf;base64,JVBERi0xLjQKMSAwIG9iaiA8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4gZW5kb2JqCjIgMCBvYmogPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4gZW5kb2JqCjMgMCBvYmogPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCA2MTIgNzkyXSAvUmVzb3VyY2VzIDw8IC9Gb250IDw8IC9GMSA0IDAgUiA+PiA+PiAvQ29udGVudHMgNSAwIFIgPj4gZW5kb2JqCjQgMCBvYmogPDwgL1R5cGUgL0ZvbnQgL1N1YnR5cGUgL1R5cGUxIC9CYXNlRm9udCAvSGVsdmV0aWNhID4+IGVuZG9iago1IDAgb2JqIDw8IC9MZW5ndGggMTIwID4+IHN0cmVhbQpCVAovRjEgMjAgVGYKNTAgNzIwIFRkCihGQUlaQU4gVkFVTFQgLSBDRVJUSUZJQ0FURSBPRiBBQ0hJRVZFTUVOVCkgVGoKMCAtMzAgVGQKL0YxIDEyIFRmCihWZXJpZmllZCBTZWN1cmUgRG9jdW1lbnQgLSBNdWhhbW1hZCBGYWl6YW4pIFRqCkVUCmVuZHN0cmVhbQplbmRvYmoKeHJlZgowIDYKMDAwMDAwMDAwMCA2NTUzNSBmCjAwMDAwMDAwMDkgMDAwMDAgbgowMDAwMDAwMDU4IDAwMDAwIG4KMDAwMDAwMDExNSAwMDAwMCBuCjAwMDAwMDAyMzQgMDAwMDAgbgowMDAwMDAwMzA1IDAwMDAwIG4KdHJhaWxlciA8PCAvU2l6ZSA2IC9Sb290IDEgMCBSID4+CnN0YXJ0eHJlZgo0NzUKJSVFT0Y=';
+
 /**
  * DEFAULT_GALLERY_ITEMS
  * You can customize, add, or delete any of the objects below directly in code!
@@ -257,6 +260,7 @@ const DEFAULT_GALLERY_ITEMS = [
     description: "Accredited certificate of completion for Advanced Software Engineering with verifiable credential ID.",
     isDefault: true,
     fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    localDataUrl: SAMPLE_CERTIFICATE_PDF_DATA,
     fileType: "application/pdf",
     fileSize: "1.2 MB"
   },
