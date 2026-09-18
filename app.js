@@ -1543,19 +1543,37 @@ class VaultixApp {
   }
 
   // =========================================================================
-  // MULTI-DEVICE CLOUD SYNCHRONIZATION (LAPTOP ⟷ MOBILE)
+  // MULTI-DEVICE CLOUD SYNCHRONIZATION (LAPTOP ⟷ MOBILE) VIA SUPABASE
   // =========================================================================
-  async syncVaultToCloud(silent = false) {
-    if (!this.cloudinaryConfig || !this.cloudinaryConfig.cloudName || !this.cloudinaryConfig.uploadPreset) {
-      return;
+  getSupabaseConfig() {
+    if (window.VAULTIX_CONFIG && window.VAULTIX_CONFIG.supabase && window.VAULTIX_CONFIG.supabase.url) {
+      return window.VAULTIX_CONFIG.supabase;
     }
+    return null;
+  }
+
+  getSupabaseHeaders() {
+    const cfg = this.getSupabaseConfig();
+    if (!cfg) return null;
+    return {
+      'apikey': cfg.anonKey,
+      'Authorization': `Bearer ${cfg.anonKey}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    };
+  }
+
+  async syncVaultToCloud(silent = false) {
+    const supaCfg = this.getSupabaseConfig();
+    const headers = this.getSupabaseHeaders();
 
     if (this.dom.syncVaultIcon) {
       this.dom.syncVaultIcon.classList.add('spinning');
     }
 
     try {
-      // Strip large local base64 strings so JSON payload is tiny (<10KB) and syncs in milliseconds
+      // Strip large local base64 strings so JSON payload is tiny and transfers in milliseconds
+      // Cloudinary image URLs (front & back) are preserved completely!
       const cleanItems = this.items.map(item => {
         const copy = { ...item };
         delete copy.localDataUrl;
@@ -1565,35 +1583,50 @@ class VaultixApp {
       });
 
       const payload = {
-        version: 1,
+        version: 2,
         updatedAt: Date.now(),
+        featuredCardId: this.featuredCardId || null,
         items: cleanItems
       };
 
-      const jsonBlob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
-      const targetFolder = this.cloudinaryConfig.folderName || 'faizan_vault';
-      const endpoint = `https://api.cloudinary.com/v1_1/${this.cloudinaryConfig.cloudName}/auto/upload`;
+      if (supaCfg && headers) {
+        const email = (window.VAULTIX_CONFIG?.auth?.email || 'Faizan0687@gmail.com').trim();
+        const base = supaCfg.url.replace(/\/$/, '');
+        const queryUrl = `${base}/rest/v1/user_notes?title=eq.faizan_vault_registry&user_email=eq.${encodeURIComponent(email)}`;
 
-      const formData = new FormData();
-      formData.append('file', jsonBlob, 'vault_sync.json');
-      formData.append('upload_preset', this.cloudinaryConfig.uploadPreset);
-      formData.append('folder', targetFolder);
-      formData.append('public_id', 'vault_sync');
+        const checkRes = await fetch(queryUrl, { headers });
+        const rows = checkRes.ok ? await checkRes.json() : [];
 
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        body: formData
-      });
+        const record = {
+          user_email: email,
+          title: 'faizan_vault_registry',
+          content: JSON.stringify(payload),
+          status: 'synced'
+        };
 
-      if (res.ok) {
+        if (Array.isArray(rows) && rows.length > 0) {
+          const rowId = rows[0].id;
+          await fetch(`${base}/rest/v1/user_notes?id=eq.${rowId}`, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify(record)
+          });
+        } else {
+          await fetch(`${base}/rest/v1/user_notes`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(record)
+          });
+        }
+
         localStorage.setItem('vaultix_last_sync_time', payload.updatedAt.toString());
         if (!silent) {
           this.showToast('☁️ Vault synced across all devices!', 'success');
         }
-        console.log('Vault successfully synced to Cloudinary');
+        console.log('Vault successfully synchronized to Supabase Cloud Database');
       }
     } catch (err) {
-      console.warn('Error syncing vault to Cloudinary:', err);
+      console.warn('Error syncing vault to cloud:', err);
     } finally {
       if (this.dom.syncVaultIcon) {
         setTimeout(() => this.dom.syncVaultIcon.classList.remove('spinning'), 600);
@@ -1602,7 +1635,10 @@ class VaultixApp {
   }
 
   async syncVaultFromCloud(notify = false) {
-    if (!this.cloudinaryConfig || !this.cloudinaryConfig.cloudName) {
+    const supaCfg = this.getSupabaseConfig();
+    const headers = this.getSupabaseHeaders();
+
+    if (!supaCfg || !headers) {
       return;
     }
 
@@ -1611,24 +1647,38 @@ class VaultixApp {
     }
 
     try {
-      const folder = this.cloudinaryConfig.folderName || 'faizan_vault';
-      const syncUrl = `https://res.cloudinary.com/${this.cloudinaryConfig.cloudName}/raw/upload/${folder}/vault_sync.json?t=${Date.now()}`;
+      const email = (window.VAULTIX_CONFIG?.auth?.email || 'Faizan0687@gmail.com').trim();
+      const base = supaCfg.url.replace(/\/$/, '');
+      const queryUrl = `${base}/rest/v1/user_notes?title=eq.faizan_vault_registry&user_email=eq.${encodeURIComponent(email)}&select=*`;
 
-      const res = await fetch(syncUrl, { cache: 'no-store' });
+      const res = await fetch(queryUrl, { headers, cache: 'no-store' });
       if (!res.ok) {
-        // If no cloud sync file exists yet and this device has items, push to cloud!
+        // If query failed and local device has items, push to cloud
         if (this.items && this.items.length > 0) {
           await this.syncVaultToCloud(true);
-        }
-        if (notify) {
-          this.showToast('Cloud vault initialized with your current items!', 'success');
         }
         return;
       }
 
-      const cloudData = await res.json();
+      const rows = await res.json();
+      if (!Array.isArray(rows) || rows.length === 0 || !rows[0].content) {
+        // No cloud backup row exists yet: push local items
+        if (this.items && this.items.length > 0) {
+          await this.syncVaultToCloud(true);
+          if (notify) {
+            this.showToast('Cloud vault initialized with your current items!', 'success');
+          }
+        }
+        return;
+      }
+
+      const cloudData = JSON.parse(rows[0].content);
       const cloudItems = Array.isArray(cloudData) ? cloudData : (cloudData && Array.isArray(cloudData.items) ? cloudData.items : null);
       if (!cloudItems) return;
+
+      if (cloudData.featuredCardId) {
+        this.featuredCardId = cloudData.featuredCardId;
+      }
 
       // Smart merge: preserve any local buffers and merge new cloud items
       let hasChanges = false;
@@ -1659,13 +1709,22 @@ class VaultixApp {
             cloudItem.backDataUrl = local.backDataUrl;
             updated = true;
           }
+          // Check for updated titles, descriptions, categories or cloudinary links
+          if (cloudItem.title !== local.title || 
+              cloudItem.cloudinaryUrl !== local.cloudinaryUrl || 
+              cloudItem.cloudinaryFrontUrl !== local.cloudinaryFrontUrl || 
+              cloudItem.cloudinaryBackUrl !== local.cloudinaryBackUrl) {
+            updated = true;
+          }
           if (updated) {
-            await this.db.put(cloudItem);
+            localMap.set(cloudItem.id, { ...local, ...cloudItem });
+            await this.db.put(localMap.get(cloudItem.id));
+            hasChanges = true;
           }
         }
       }
 
-      // If local device has custom items that are not yet in cloud, push to cloud!
+      // If local device has items that are not in cloud yet, push to cloud!
       let localHasNewItems = false;
       for (const [id, localItem] of localMap.entries()) {
         const inCloud = cloudItems.some(c => c.id === id);
@@ -1681,13 +1740,13 @@ class VaultixApp {
           await this.syncVaultToCloud(true);
         }
         if (notify || hasChanges) {
-          this.showToast(`☁️ Synced with Cloud Vault! (${this.items.length} items)`, 'success');
+          this.showToast(`☁️ Cloud Vault Synced! (${this.items.length} items live)`, 'success');
         }
       } else if (notify) {
         this.showToast('☁️ Vault is already up to date with cloud!', 'info');
       }
     } catch (err) {
-      console.warn('Error fetching cloud sync:', err);
+      console.warn('Error fetching cloud sync from Supabase:', err);
       if (notify) {
         this.showToast('Could not sync with cloud: ' + err.message, 'error');
       }
@@ -2232,6 +2291,8 @@ class VaultixApp {
         this.dom.authEmailInput.value = '';
         this.dom.authPasswordInput.value = '';
         this.showToast('Welcome back, Muhammad Faizan!', 'success');
+        // Instantly pull all ID cards and photos from Cloud Vault on login!
+        this.syncVaultFromCloud(true);
       }, 450);
 
     } else {
