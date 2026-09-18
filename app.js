@@ -163,7 +163,8 @@ class VaultixApp {
       showcaseFlipBtn: document.getElementById('showcaseFlipBtn'),
       showcaseFlipBtnText: document.getElementById('showcaseFlipBtnText'),
       showcaseViewModalBtn: document.getElementById('showcaseViewModalBtn'),
-      showcaseDownloadBtn: document.getElementById('showcaseDownloadBtn'),
+      showcaseDownloadCombinedBtn: document.getElementById('showcaseDownloadCombinedBtn'),
+      showcaseDownloadCombinedImgBtn: document.getElementById('showcaseDownloadCombinedImgBtn'),
       showcaseEditBtn: document.getElementById('showcaseEditBtn'),
 
       // Filters & Grid
@@ -225,6 +226,11 @@ class VaultixApp {
       lightboxMetaExpiry: document.getElementById('lightboxMetaExpiry'),
       lightboxTags: document.getElementById('lightboxTags'),
       lightboxDownloadBtn: document.getElementById('lightboxDownloadBtn'),
+      idCardDownloadGroup: document.getElementById('idCardDownloadGroup'),
+      idDownloadCombinedPngBtn: document.getElementById('idDownloadCombinedPngBtn'),
+      idDownloadCombinedPdfBtn: document.getElementById('idDownloadCombinedPdfBtn'),
+      idDownloadFrontOnlyBtn: document.getElementById('idDownloadFrontOnlyBtn'),
+      idDownloadBackOnlyBtn: document.getElementById('idDownloadBackOnlyBtn'),
       lightboxEditBtn: document.getElementById('lightboxEditBtn'),
       lightboxDeleteBtn: document.getElementById('lightboxDeleteBtn'),
 
@@ -362,9 +368,14 @@ class VaultixApp {
       if (item) this.openLightbox(item);
     });
 
-    this.dom.showcaseDownloadBtn.addEventListener('click', () => {
+    this.dom.showcaseDownloadCombinedBtn.addEventListener('click', () => {
       const item = this.items.find(i => i.id === this.featuredCardId);
-      if (item) this.downloadItem(item);
+      if (item) this.downloadIdCardCombinedPdf(item);
+    });
+
+    this.dom.showcaseDownloadCombinedImgBtn.addEventListener('click', () => {
+      const item = this.items.find(i => i.id === this.featuredCardId);
+      if (item) this.downloadIdCardCombinedImage(item);
     });
 
     this.dom.showcaseEditBtn.addEventListener('click', () => {
@@ -439,6 +450,27 @@ class VaultixApp {
 
     this.dom.lightboxDownloadBtn.addEventListener('click', () => {
       if (this.currentLightboxItem) this.downloadItem(this.currentLightboxItem);
+    });
+
+    // ID Card Combined Single-Page Downloads
+    this.dom.idDownloadCombinedPngBtn.addEventListener('click', () => {
+      if (this.currentLightboxItem) this.downloadIdCardCombinedImage(this.currentLightboxItem);
+    });
+
+    this.dom.idDownloadCombinedPdfBtn.addEventListener('click', () => {
+      if (this.currentLightboxItem) this.downloadIdCardCombinedPdf(this.currentLightboxItem);
+    });
+
+    this.dom.idDownloadFrontOnlyBtn.addEventListener('click', () => {
+      if (this.currentLightboxItem && this.currentLightboxItem.frontUrl) {
+        this.downloadFile(this.currentLightboxItem.frontUrl, `${this.currentLightboxItem.title}_Front.png`);
+      }
+    });
+
+    this.dom.idDownloadBackOnlyBtn.addEventListener('click', () => {
+      if (this.currentLightboxItem && this.currentLightboxItem.backUrl) {
+        this.downloadFile(this.currentLightboxItem.backUrl, `${this.currentLightboxItem.title}_Back.png`);
+      }
     });
 
     this.dom.lightboxEditBtn.addEventListener('click', () => {
@@ -854,19 +886,27 @@ class VaultixApp {
     this.dom.lightboxMetaDate.textContent = item.date || 'Unknown';
     this.dom.lightboxMetaSize.textContent = item.fileSize || 'Standard';
 
-    // ID Specific info in sidebar
+    // ID Specific info in sidebar & download buttons toggle
     if (item.category === 'idcard') {
       this.dom.lightboxCardNumberRow.style.display = 'flex';
       this.dom.lightboxExpiryRow.style.display = 'flex';
       this.dom.lightboxMetaCardNumber.textContent = item.cardNumber || 'Not specified';
       this.dom.lightboxMetaExpiry.textContent = item.expiryDate || 'Lifetime';
       this.dom.lightboxTypeIcon.textContent = '🪪';
+      
+      // Show combined 1-page download buttons for ID Cards
+      this.dom.lightboxDownloadBtn.style.display = 'none';
+      this.dom.idCardDownloadGroup.style.display = 'flex';
     } else {
       this.dom.lightboxCardNumberRow.style.display = 'none';
       this.dom.lightboxExpiryRow.style.display = 'none';
       if (item.category === 'photo') this.dom.lightboxTypeIcon.textContent = '📸';
       if (item.category === 'video') this.dom.lightboxTypeIcon.textContent = '🎬';
       if (item.category === 'document') this.dom.lightboxTypeIcon.textContent = '📑';
+
+      // Show standard download button for other files
+      this.dom.lightboxDownloadBtn.style.display = 'block';
+      this.dom.idCardDownloadGroup.style.display = 'none';
     }
 
     // Tags
@@ -1426,18 +1466,289 @@ class VaultixApp {
   }
 
   // =========================================================================
-  // DOWNLOAD ITEM HELPER
+  // DOWNLOAD ITEM HELPER & COMBINED 1-PAGE GENERATORS
   // =========================================================================
   downloadItem(item) {
     if (item.category === 'idcard') {
-      if (item.frontUrl) this.downloadFile(item.frontUrl, `${item.title}_Front.png`);
-      if (item.backUrl) {
-        setTimeout(() => this.downloadFile(item.backUrl, `${item.title}_Back.png`), 300);
-      }
+      // Default to combined single-page image for ID cards
+      this.downloadIdCardCombinedImage(item);
     } else if (item.fileUrl) {
       const ext = item.fileType ? item.fileType.split('/')[1] : 'bin';
       this.downloadFile(item.fileUrl, `${item.title}.${ext}`);
     }
+  }
+
+  async downloadIdCardCombinedImage(item) {
+    this.showToast('Generating 1-page combined document image...', 'info');
+
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1200;
+      canvas.height = 1680;
+      const ctx = canvas.getContext('2d');
+
+      // Crisp clean white paper background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Outer security frame
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(30, 30, canvas.width - 60, canvas.height - 60);
+
+      // Inner security line
+      ctx.strokeStyle = '#06b6d4';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(36, 36, canvas.width - 72, canvas.height - 72);
+
+      // Top Header Box
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(36, 36, canvas.width - 72, 130);
+
+      // Header Tagline & Title
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = 'bold 15px -apple-system, sans-serif';
+      ctx.fillText('GOVERNMENT CITIZEN SECURE VAULT • OFFICIAL VERIFIED COPY', 60, 75);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 30px -apple-system, sans-serif';
+      ctx.fillText(item.title.toUpperCase(), 60, 115);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '16px -apple-system, sans-serif';
+      ctx.fillText(`Cardholder: ${item.holderName || 'Muhammad Faizan'}  |  ID Number: ${item.cardNumber || 'Not specified'}  |  Date: ${item.date || '2026'}`, 60, 145);
+
+      // Helper to load image
+      const loadImage = (url) => new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('Failed to load card image for rendering.'));
+        img.src = url;
+      });
+
+      const frontImg = await loadImage(item.frontUrl || item.backUrl);
+      const backImg = await loadImage(item.backUrl || item.frontUrl);
+
+      const cardWidth = 1000;
+      const cardHeight = 630;
+      const startX = (canvas.width - cardWidth) / 2;
+
+      // Section 1: Front Side
+      const frontY = 230;
+      ctx.fillStyle = '#0369a1';
+      ctx.font = 'bold 18px -apple-system, sans-serif';
+      ctx.fillText('▼ FRONT SIDE / رخ اوّل', startX, frontY - 15);
+
+      // Draw Front Card Border & Shadow
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.15)';
+      ctx.shadowBlur = 15;
+      ctx.shadowOffsetY = 6;
+      ctx.drawImage(frontImg, startX, frontY, cardWidth, cardHeight);
+      ctx.restore();
+
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(startX, frontY, cardWidth, cardHeight);
+
+      // Section 2: Back Side
+      const backY = frontY + cardHeight + 70;
+      ctx.fillStyle = '#0369a1';
+      ctx.font = 'bold 18px -apple-system, sans-serif';
+      ctx.fillText('▼ BACK SIDE / رخ دوم', startX, backY - 15);
+
+      // Draw Back Card Border & Shadow
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.15)';
+      ctx.shadowBlur = 15;
+      ctx.shadowOffsetY = 6;
+      ctx.drawImage(backImg, startX, backY, cardWidth, cardHeight);
+      ctx.restore();
+
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(startX, backY, cardWidth, cardHeight);
+
+      // Footer
+      ctx.fillStyle = '#64748b';
+      ctx.font = '14px -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Muhammad Faizan Personal Vault • Official Single-Page Dual-Sided Document • Encrypted & Verified', canvas.width / 2, canvas.height - 55);
+
+      // Trigger PNG Download
+      const combinedDataUrl = canvas.toDataURL('image/png');
+      const filename = `${item.title.replace(/\s+/g, '_')}_Combined_1Page.png`;
+      this.downloadFile(combinedDataUrl, filename);
+      this.showToast(`Downloaded 1-page combined image: ${filename}`, 'success');
+
+    } catch (err) {
+      console.error('Error generating combined image:', err);
+      this.showToast('Could not combine images: ' + err.message, 'error');
+    }
+  }
+
+  downloadIdCardCombinedPdf(item) {
+    this.showToast('Preparing 1-page printable PDF document...', 'info');
+
+    const printWindow = window.open('', '_blank', 'width=900,height=800');
+    if (!printWindow) {
+      alert('Popup blocker prevented opening the PDF print window. Please allow popups for this site.');
+      return;
+    }
+
+    const printHtml = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <title>${item.title} - Official 1-Page Document</title>
+        <style>
+          @page {
+            size: A4 portrait;
+            margin: 12mm 15mm;
+          }
+          * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+          }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: #ffffff;
+            color: #0f172a;
+            padding: 20px;
+          }
+          .sheet-container {
+            border: 2px solid #0f172a;
+            border-radius: 10px;
+            padding: 20px 24px;
+            max-width: 800px;
+            margin: 0 auto;
+          }
+          .header {
+            border-bottom: 2px solid #0f172a;
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+          }
+          .header h1 {
+            font-size: 22px;
+            font-weight: 800;
+            color: #0f172a;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+          }
+          .header p {
+            font-size: 13px;
+            color: #475569;
+            margin-top: 4px;
+          }
+          .header-meta {
+            text-align: right;
+            font-size: 12px;
+            color: #334155;
+            line-height: 1.5;
+          }
+          .card-block {
+            margin-bottom: 22px;
+            text-align: center;
+          }
+          .card-label {
+            font-size: 13px;
+            font-weight: 800;
+            color: #0284c7;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+            display: block;
+          }
+          .card-image-wrap {
+            display: inline-block;
+            border: 1.5px solid #94a3b8;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+            background: #0f172a;
+          }
+          .card-image-wrap img {
+            width: 100%;
+            max-width: 600px;
+            height: auto;
+            display: block;
+          }
+          .footer {
+            margin-top: 20px;
+            padding-top: 12px;
+            border-top: 1px dashed #cbd5e1;
+            font-size: 11px;
+            color: #64748b;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+          @media print {
+            body { padding: 0; }
+            .sheet-container { border: 1.5px solid #0f172a; }
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="no-print" style="background: #e0f2fe; padding: 12px 20px; margin-bottom: 20px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 14px; font-weight: 600; color: #0369a1;">📄 1-Page Official PDF Ready. In the Print Dialog, choose Destination: "Save as PDF".</span>
+          <button onclick="window.print()" style="background: #0284c7; color: #fff; border: none; padding: 8px 18px; border-radius: 6px; font-weight: 700; cursor: pointer;">🖨️ Print / Save PDF</button>
+        </div>
+
+        <div class="sheet-container">
+          <div class="header">
+            <div>
+              <h1>${item.title}</h1>
+              <p>Cardholder: <strong>${item.holderName || 'Muhammad Faizan'}</strong>  |  ID Number: <strong>${item.cardNumber || 'Not specified'}</strong></p>
+            </div>
+            <div class="header-meta">
+              <div>Valid Until: <strong>${item.expiryDate || 'Lifetime'}</strong></div>
+              <div>Status: <strong>Verified Document</strong></div>
+            </div>
+          </div>
+
+          <div class="card-block">
+            <span class="card-label">▼ FRONT SIDE / رخ اوّل</span>
+            <div class="card-image-wrap">
+              <img src="${item.frontUrl}" alt="ID Card Front Side">
+            </div>
+          </div>
+
+          <div class="card-block">
+            <span class="card-label">▼ BACK SIDE / رخ دوم</span>
+            <div class="card-image-wrap">
+              <img src="${item.backUrl}" alt="ID Card Back Side">
+            </div>
+          </div>
+
+          <div class="footer">
+            <span>Muhammad Faizan's Private Archive • Verified Official Document</span>
+            <span>Security Level 3 • Original Copy</span>
+          </div>
+        </div>
+
+        <script>
+          // Automatically trigger print dialog once images load
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+            }, 600);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(printHtml);
+    printWindow.document.close();
   }
 
   downloadFile(url, filename) {

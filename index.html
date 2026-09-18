@@ -292,9 +292,13 @@
           </div>
 
           <div class="showcase-actions">
-            <button id="showcaseDownloadBtn" class="btn btn-secondary btn-sm">
-              <span>⬇️</span>
-              <span>Download Files</span>
+            <button id="showcaseDownloadCombinedBtn" class="btn btn-primary btn-sm" title="Download Front & Back on one single page PDF">
+              <span>📄</span>
+              <span>Download 1-Page (PDF)</span>
+            </button>
+            <button id="showcaseDownloadCombinedImgBtn" class="btn btn-secondary btn-sm" title="Download Front & Back on one single image PNG">
+              <span>🖼️</span>
+              <span>Combined (PNG)</span>
             </button>
             <button id="showcaseEditBtn" class="btn btn-secondary btn-sm">
               <span>✏️</span>
@@ -551,11 +555,34 @@
           </div>
 
           <div style="display: flex; flex-direction: column; gap: 0.65rem; margin-top: 1.5rem;">
+            
+            <!-- Standard File Download (Photos, Videos, PDFs) -->
             <button id="lightboxDownloadBtn" class="btn btn-primary">
               <span>⬇️</span>
               <span>Download File</span>
             </button>
-            <div style="display: flex; gap: 0.5rem;">
+
+            <!-- ID Card Special Combined Downloads (Front & Back on 1 Page) -->
+            <div id="idCardDownloadGroup" style="display: none; flex-direction: column; gap: 0.55rem;">
+              <button id="idDownloadCombinedPngBtn" class="btn btn-primary" title="Download Front & Back stitched onto one single page image">
+                <span>🖼️</span>
+                <span>Download Combined 1-Page (PNG)</span>
+              </button>
+              <button id="idDownloadCombinedPdfBtn" class="btn btn-secondary" title="Download Front & Back aligned on official 1-Page A4 PDF sheet">
+                <span>📄</span>
+                <span>Download 1-Page Document (PDF)</span>
+              </button>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; margin-top: 0.1rem;">
+                <button id="idDownloadFrontOnlyBtn" class="btn btn-secondary btn-sm" title="Download Front side only">
+                  <span>⬇️ Front Only</span>
+                </button>
+                <button id="idDownloadBackOnlyBtn" class="btn btn-secondary btn-sm" title="Download Back side only">
+                  <span>⬇️ Back Only</span>
+                </button>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 0.5rem; margin-top: 0.25rem;">
               <button id="lightboxEditBtn" class="btn btn-secondary" style="flex: 1;">
                 <span>✏️</span>
                 <span>Edit Info</span>
