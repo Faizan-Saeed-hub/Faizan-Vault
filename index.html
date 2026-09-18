@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Muhammad Faizan | Personal Vault & Media Gallery</title>
+  <meta name="description" content="Personal Document & Media Vault for Muhammad Faizan. Securely store, view, 3D flip, and manage ID Cards (Front & Back), Photos, Videos, and PDFs.">
+  <meta name="author" content="Muhammad Faizan">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- =========================================================================
+       NAVIGATION BAR
+       ========================================================================= -->
+  <nav class="navbar" id="mainNavbar">
+    <div class="nav-container">
+      <a href="#" class="brand-group" id="brandLogo">
+        <div class="brand-icon">
+          <span>🛡️</span>
+        </div>
+        <div class="brand-text">
+          <h1>FAIZAN VAULT</h1>
+          <span>Muhammad Faizan's Archive</span>
+        </div>
+      </a>
+
+      <div class="nav-center-search">
+        <div class="search-input-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="globalSearchInput" class="nav-search-input" placeholder="Search Faizan's ID cards, photos, videos, tags...">
+          <button id="clearSearchBtn" class="clear-search-btn" title="Clear search">✕</button>
+        </div>
+      </div>
+
+      <div class="nav-actions">
+        <!-- User Profile Pill -->
+        <div class="user-profile-badge" title="Owner: Muhammad Faizan">
+          <span class="avatar-circle">MF</span>
+          <span class="user-name-label">M. Faizan</span>
+        </div>
+
+        <!-- Cloudinary Settings Button -->
+        <button id="openCloudinaryBtn" class="btn btn-secondary btn-sm" title="Configure Cloudinary Cloud Storage">
+          <span id="cloudStatusIcon">☁️</span>
+          <span>Cloud Storage</span>
+        </button>
+
+        <button id="exportVaultBtn" class="btn btn-secondary btn-sm" title="Export vault data as JSON backup">
+          <span>📦</span>
+          <span>Backup</span>
+        </button>
+        <button id="importVaultBtn" class="btn btn-secondary btn-sm" title="Import vault backup JSON">
+          <span>📥</span>
+          <span>Restore</span>
+        </button>
+        <input type="file" id="importJsonInput" accept=".json" style="display: none;">
+        
+        <button id="openUploadModalBtn" class="btn btn-primary" title="Add new item or ID Card">
+          <span>＋</span>
+          <span>Upload File</span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- =========================================================================
+       MAIN CONTENT CONTAINER
+       ========================================================================= -->
+  <main class="main-wrapper">
+
+    <!-- HERO / VAULT STATS DASHBOARD -->
+    <section class="hero-dashboard">
+      <div class="hero-info-card">
+        <div>
+          <div style="display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 1rem;">
+            <div class="hero-badge-pill">
+              <span class="pulse-dot"></span>
+              <span>Personal Vault Active • Muhammad Faizan</span>
+            </div>
+            <div class="hero-badge-pill" id="cloudStatusBadge" style="background: rgba(6, 182, 212, 0.12); border-color: rgba(6, 182, 212, 0.3); color: #38bdf8; cursor: pointer;">
+              <span>☁️</span>
+              <span id="cloudStatusText">Cloudinary: Ready to Connect</span>
+            </div>
+          </div>
+          <h2 class="hero-title">Muhammad Faizan's Private Archive & Vault</h2>
+          <p class="hero-subtitle">
+            Personal repository to securely showcase and manage official identity cards (with front & back dual 3D view), high-resolution gallery photos, video reels, and authenticated PDF documents.
+          </p>
+        </div>
+
+        <div class="hero-cta-row">
+          <button id="heroUploadIdBtn" class="btn btn-primary">
+            <span>🪪</span>
+            <span>Add ID Card (Front & Back)</span>
+          </button>
+          <button id="heroUploadMediaBtn" class="btn btn-secondary">
+            <span>📁</span>
+            <span>Add Photo / Video / PDF</span>
+          </button>
+          <button id="resetDefaultsBtn" class="btn btn-secondary btn-sm" title="Reload default code items">
+            <span>🔄</span>
+            <span>Reset to Defaults</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Stats Counters -->
+      <div class="stats-grid">
+        <div class="stat-card" data-filter-target="idcard">
+          <div class="stat-icon icon-cyan">🪪</div>
+          <div class="stat-meta">
+            <span class="stat-number" id="statIdCardCount">0</span>
+            <span class="stat-label">ID Cards (Dual-Sided)</span>
+          </div>
+        </div>
+        <div class="stat-card" data-filter-target="photo">
+          <div class="stat-icon icon-emerald">📸</div>
+          <div class="stat-meta">
+            <span class="stat-number" id="statPhotoCount">0</span>
+            <span class="stat-label">Photos & Images</span>
+          </div>
+        </div>
+        <div class="stat-card" data-filter-target="video">
+          <div class="stat-icon icon-amber">🎬</div>
+          <div class="stat-meta">
+            <span class="stat-number" id="statVideoCount">0</span>
+            <span class="stat-label">Videos & Reels</span>
+          </div>
+        </div>
+        <div class="stat-card" data-filter-target="document">
+          <div class="stat-icon icon-indigo">📑</div>
+          <div class="stat-meta">
+            <span class="stat-number" id="statDocCount">0</span>
+            <span class="stat-label">PDFs & Documents</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         FEATURED ID CARD 3D FLIP SHOWCASE
+         ========================================================================= -->
+    <section class="featured-showcase" id="featuredIdSection">
+      <div class="showcase-header">
+        <div class="showcase-title-wrap">
+          <span class="showcase-badge">FEATURED IDENTITY</span>
+          <h3 id="showcaseCardTitle">Primary Identity Card</h3>
+        </div>
+        <div class="showcase-actions">
+          <button id="showcaseFlipBtn" class="btn btn-secondary btn-sm">
+            <span>🔄</span>
+            <span id="showcaseFlipBtnText">Flip to Back Side</span>
+          </button>
+          <button id="showcaseViewModalBtn" class="btn btn-primary btn-sm">
+            <span>👁️</span>
+            <span>Full Preview</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="showcase-body">
+        <!-- 3D Flippable Stage -->
+        <div class="id-flip-stage" id="showcaseFlipStage" title="Click anywhere to flip between Front and Back">
+          <div class="id-flip-card-inner" id="showcaseCardInner">
+            <!-- Front Face -->
+            <div class="id-card-face id-card-front">
+              <span class="flip-hint-overlay">✨ Click card to flip</span>
+              <img id="showcaseFrontImg" src="" alt="ID Card Front Side">
+              <div class="flip-side-indicator">
+                <span>🛡️</span>
+                <span>FRONT SIDE</span>
+              </div>
+            </div>
+
+            <!-- Back Face -->
+            <div class="id-card-face id-card-back">
+              <span class="flip-hint-overlay">✨ Click card to flip</span>
+              <img id="showcaseBackImg" src="" alt="ID Card Back Side">
+              <div class="flip-side-indicator">
+                <span>🛡️</span>
+                <span>BACK SIDE</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Meta Information for Featured Card -->
+        <div class="showcase-info-content">
+          <div>
+            <h4 class="showcase-card-title" id="showcaseCardName">Muhammad Faizan</h4>
+            <p class="showcase-desc" id="showcaseCardDesc">
+              Official Smart Identity Card with biometric authentication, laser engraving, and machine-readable zone.
+            </p>
+          </div>
+
+          <div class="id-data-pills">
+            <div class="id-data-pill">
+              <span class="label">ID Card Number</span>
+              <span class="val" id="showcaseIdNumber">42201-9876543-1</span>
+            </div>
+            <div class="id-data-pill">
+              <span class="label">Valid Until</span>
+              <span class="val" id="showcaseExpiry">31-12-2032</span>
+            </div>
+            <div class="id-data-pill">
+              <span class="label">Security Level</span>
+              <span class="val" style="color: #00ffcc;">Level 3 High Security</span>
+            </div>
+            <div class="id-data-pill">
+              <span class="label">Side Currently Shown</span>
+              <span class="val" id="showcaseCurrentSideText">Front (Chip Face)</span>
+            </div>
+          </div>
+
+          <div class="showcase-actions">
+            <button id="showcaseDownloadBtn" class="btn btn-secondary btn-sm">
+              <span>⬇️</span>
+              <span>Download Files</span>
+            </button>
+            <button id="showcaseEditBtn" class="btn btn-secondary btn-sm">
+              <span>✏️</span>
+              <span>Edit Details</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         GALLERY TOOLBAR (FILTERS & SORTING)
+         ========================================================================= -->
+    <div class="gallery-toolbar">
+      <div class="category-filter-pills" id="categoryFilterContainer">
+        <button class="filter-pill active" data-category="all">
+          <span>🌟</span>
+          <span>All Items</span>
+          <span class="count-badge" id="filterCountAll">0</span>
+        </button>
+        <button class="filter-pill" data-category="idcard">
+          <span>🪪</span>
+          <span>ID Cards</span>
+          <span class="count-badge" id="filterCountIdCard">0</span>
+        </button>
+        <button class="filter-pill" data-category="photo">
+          <span>📸</span>
+          <span>Photos</span>
+          <span class="count-badge" id="filterCountPhoto">0</span>
+        </button>
+        <button class="filter-pill" data-category="video">
+          <span>🎬</span>
+          <span>Videos</span>
+          <span class="count-badge" id="filterCountVideo">0</span>
+        </button>
+        <button class="filter-pill" data-category="document">
+          <span>📑</span>
+          <span>Documents (PDF)</span>
+          <span class="count-badge" id="filterCountDocument">0</span>
+        </button>
+      </div>
+
+      <div class="gallery-sort-controls">
+        <label for="sortSelect" style="font-size: 0.82rem; color: var(--text-muted); font-weight: 600;">Sort By:</label>
+        <select id="sortSelect" class="select-control">
+          <option value="newest">Newest First</option>
+          <option value="oldest">Oldest First</option>
+          <option value="titleAsc">Title (A - Z)</option>
+          <option value="titleDesc">Title (Z - A)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- =========================================================================
+         GALLERY GRID
+         ========================================================================= -->
+    <div class="gallery-grid" id="galleryGrid">
+      <!-- Items dynamically populated via JavaScript -->
+    </div>
+
+  </main>
+
+  <!-- =========================================================================
+       MODAL: UPLOAD NEW ITEM
+       ========================================================================= -->
+  <div class="modal-backdrop" id="uploadModal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <span>📤</span>
+          <span>Add to Personal Vault</span>
+        </h3>
+        <button class="modal-close-btn" id="closeUploadModalBtn">✕</button>
+      </div>
+
+      <form id="uploadForm" class="modal-body">
+        
+        <!-- Category Selection -->
+        <div class="form-group">
+          <label class="form-label">Select Item Type</label>
+          <div class="category-picker-row">
+            <div class="cat-pick-btn selected" data-type="idcard">
+              <span class="emoji">🪪</span>
+              <span>ID Card (Front & Back)</span>
+            </div>
+            <div class="cat-pick-btn" data-type="photo">
+              <span class="emoji">📸</span>
+              <span>Photo / Image</span>
+            </div>
+            <div class="cat-pick-btn" data-type="video">
+              <span class="emoji">🎬</span>
+              <span>Video</span>
+            </div>
+            <div class="cat-pick-btn" data-type="document">
+              <span class="emoji">📑</span>
+              <span>PDF / Document</span>
+            </div>
+          </div>
+          <input type="hidden" id="itemCategoryInput" value="idcard">
+        </div>
+
+        <!-- SPECIAL SECTION: ID CARD DUAL UPLOAD (FRONT & BACK) -->
+        <div id="idCardUploadSection">
+          <div class="form-group">
+            <label class="form-label">Upload Dual Sides (Front & Back)</label>
+            <div class="id-dual-upload-grid">
+              
+              <!-- Front Side Box -->
+              <div class="id-side-dropzone" id="frontSideDropzone">
+                <span class="id-side-tag-label">FRONT SIDE</span>
+                <img class="id-side-preview" id="frontSidePreviewImg" src="" alt="Front Preview">
+                <div class="id-drop-placeholder">
+                  <div style="font-size: 1.8rem; margin-bottom: 0.3rem;">🪪</div>
+                  <strong style="font-size: 0.85rem; color: #ffffff;">Upload Front Side</strong>
+                  <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">PNG, JPG, SVG</span>
+                </div>
+                <input type="file" id="frontFileInput" accept="image/*" style="display: none;">
+              </div>
+
+              <!-- Back Side Box -->
+              <div class="id-side-dropzone" id="backSideDropzone">
+                <span class="id-side-tag-label">BACK SIDE</span>
+                <img class="id-side-preview" id="backSidePreviewImg" src="" alt="Back Preview">
+                <div class="id-drop-placeholder">
+                  <div style="font-size: 1.8rem; margin-bottom: 0.3rem;">🔄</div>
+                  <strong style="font-size: 0.85rem; color: #ffffff;">Upload Back Side</strong>
+                  <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">PNG, JPG, SVG</span>
+                </div>
+                <input type="file" id="backFileInput" accept="image/*" style="display: none;">
+              </div>
+
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.85rem; margin-top: 0.5rem;">
+            <div class="form-group">
+              <label class="form-label" for="idCardNumberInput">Card Number (Optional)</label>
+              <input type="text" id="idCardNumberInput" class="form-control" placeholder="e.g. 42201-1234567-1">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="idCardExpiryInput">Expiry Date (Optional)</label>
+              <input type="date" id="idCardExpiryInput" class="form-control">
+            </div>
+          </div>
+        </div>
+
+        <!-- STANDARD FILE UPLOAD BOX (PHOTO / VIDEO / PDF) -->
+        <div id="standardUploadSection" style="display: none;">
+          <div class="form-group">
+            <label class="form-label">Upload File</label>
+            <div class="dropzone-box" id="generalDropzone">
+              <div class="dropzone-icon" id="generalDropzoneIcon">📁</div>
+              <span class="dropzone-text" id="generalDropzoneText">Drag & drop your file here, or click to browse</span>
+              <span class="dropzone-sub" id="generalDropzoneSub">Supports JPG, PNG, WEBP, MP4, WEBM, PDF</span>
+              <input type="file" id="generalFileInput" style="display: none;">
+            </div>
+            <!-- Preview of selected file -->
+            <div id="generalFilePreviewWrap" style="display: none; margin-top: 0.75rem; text-align: center;">
+              <span id="selectedFileName" style="font-size: 0.85rem; color: #38bdf8; font-weight: 600;"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- General Title & Description -->
+        <div class="form-group">
+          <label class="form-label" for="itemTitleInput">Title *</label>
+          <input type="text" id="itemTitleInput" class="form-control" placeholder="e.g. National ID Card or Sunset Landscape" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="itemTagsInput">Tags (comma separated)</label>
+          <input type="text" id="itemTagsInput" class="form-control" placeholder="e.g. official, personal, 2026, travel">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="itemDescInput">Notes / Description</label>
+          <textarea id="itemDescInput" class="form-control" placeholder="Add any details, notes, or references..."></textarea>
+        </div>
+
+        <!-- Cloudinary Upload Progress / Status -->
+        <div id="uploadProgressWrap" style="display: none; margin-top: 0.5rem;">
+          <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #38bdf8; margin-bottom: 0.35rem; font-weight: 600;">
+            <span id="uploadProgressStatusText">☁️ Uploading to Cloudinary folder...</span>
+            <span id="uploadProgressPercent">0%</span>
+          </div>
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="uploadProgressBarFill" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancelUploadBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="saveUploadBtn">
+            <span>💾</span>
+            <span>Save to Vault</span>
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL: FULLSCREEN LIGHTBOX & PREVIEWER (VIEW OPTION)
+       ========================================================================= -->
+  <div class="modal-backdrop lightbox-modal" id="lightboxModal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title" id="lightboxHeaderTitle">
+          <span id="lightboxTypeIcon">👁️</span>
+          <span id="lightboxHeaderName">Preview</span>
+        </h3>
+        <button class="modal-close-btn" id="closeLightboxBtn">✕</button>
+      </div>
+
+      <div class="lightbox-body">
+        <!-- Stage where media displays -->
+        <div class="lightbox-viewer-stage" id="lightboxStage">
+          <!-- Dynamically filled with Image, Video, PDF embed, or 3D Flip Card -->
+        </div>
+
+        <!-- Sidebar with details & actions -->
+        <div class="lightbox-details-panel">
+          <div>
+            <h4 class="lightbox-detail-title" id="lightboxDetailTitle">Item Title</h4>
+            <p class="lightbox-detail-desc" id="lightboxDetailDesc">Item Description notes</p>
+
+            <div class="lightbox-meta-list" id="lightboxMetaList">
+              <div class="lightbox-meta-item">
+                <span class="meta-key">Category</span>
+                <span class="meta-val" id="lightboxMetaCategory">Photo</span>
+              </div>
+              <div class="lightbox-meta-item">
+                <span class="meta-key">Date Added</span>
+                <span class="meta-val" id="lightboxMetaDate">2026-09-18</span>
+              </div>
+              <div class="lightbox-meta-item">
+                <span class="meta-key">File Size</span>
+                <span class="meta-val" id="lightboxMetaSize">2.4 MB</span>
+              </div>
+              <div class="lightbox-meta-item" id="lightboxCardNumberRow" style="display: none;">
+                <span class="meta-key">Card Number</span>
+                <span class="meta-val" id="lightboxMetaCardNumber">-</span>
+              </div>
+              <div class="lightbox-meta-item" id="lightboxExpiryRow" style="display: none;">
+                <span class="meta-key">Expiry Date</span>
+                <span class="meta-val" id="lightboxMetaExpiry">-</span>
+              </div>
+            </div>
+
+            <div class="card-tags" id="lightboxTags">
+              <!-- Tags pills -->
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 0.65rem; margin-top: 1.5rem;">
+            <button id="lightboxDownloadBtn" class="btn btn-primary">
+              <span>⬇️</span>
+              <span>Download File</span>
+            </button>
+            <div style="display: flex; gap: 0.5rem;">
+              <button id="lightboxEditBtn" class="btn btn-secondary" style="flex: 1;">
+                <span>✏️</span>
+                <span>Edit Info</span>
+              </button>
+              <button id="lightboxDeleteBtn" class="btn btn-danger" style="flex: 1;">
+                <span>🗑️</span>
+                <span>Delete</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL: EDIT ITEM DETAILS
+       ========================================================================= -->
+  <div class="modal-backdrop" id="editModal">
+    <div class="modal-dialog" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <span>✏️</span>
+          <span>Edit Item Details</span>
+        </h3>
+        <button class="modal-close-btn" id="closeEditModalBtn">✕</button>
+      </div>
+
+      <form id="editForm" class="modal-body">
+        <input type="hidden" id="editItemId">
+
+        <div class="form-group">
+          <label class="form-label" for="editTitleInput">Title</label>
+          <input type="text" id="editTitleInput" class="form-control" required>
+        </div>
+
+        <div class="form-group" id="editCardNumberGroup" style="display: none;">
+          <label class="form-label" for="editCardNumberInput">Card Number</label>
+          <input type="text" id="editCardNumberInput" class="form-control">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="editTagsInput">Tags (comma separated)</label>
+          <input type="text" id="editTagsInput" class="form-control">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="editDescInput">Description / Notes</label>
+          <textarea id="editDescInput" class="form-control"></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancelEditBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <span>💾</span>
+            <span>Update Changes</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL: CLOUDINARY CLOUD STORAGE SETTINGS
+       ========================================================================= -->
+  <div class="modal-backdrop" id="cloudinaryModal">
+    <div class="modal-dialog" style="max-width: 580px;">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <span>☁️</span>
+          <span>Cloudinary Cloud Storage Settings</span>
+        </h3>
+        <button class="modal-close-btn" id="closeCloudinaryModalBtn">✕</button>
+      </div>
+
+      <form id="cloudinaryConfigForm" class="modal-body">
+        <div class="cloudinary-guide-banner">
+          <span style="font-size: 1.4rem;">💡</span>
+          <p style="font-size: 0.84rem; line-height: 1.5; color: #cbd5e1;">
+            Enter your Cloudinary details below. Any files you upload (ID cards front & back, photos, videos, PDFs) will be automatically uploaded into your designated Cloudinary cloud folder so they remain accessible from anywhere after deployment!
+          </p>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="cloudNameInput">Cloud Name *</label>
+          <input type="text" id="cloudNameInput" class="form-control" placeholder="e.g. dxyz12345" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="cloudPresetInput">Upload Preset (Unsigned) *</label>
+          <input type="text" id="cloudPresetInput" class="form-control" placeholder="e.g. faizan_vault_preset" required>
+          <span style="font-size: 0.74rem; color: var(--text-muted); margin-top: 0.25rem; display: block;">
+            Cloudinary Console ➔ <strong>Settings (Gear icon) ➔ Upload ➔ Add upload preset ➔ Signing Mode: Unsigned</strong>.
+          </span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="cloudApiKeyInput">API Key (Optional)</label>
+          <input type="text" id="cloudApiKeyInput" class="form-control" placeholder="e.g. 123456789012345">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="cloudFolderInput">Target Cloud Folder Name *</label>
+          <input type="text" id="cloudFolderInput" class="form-control" placeholder="e.g. faizan_vault" value="faizan_vault" required>
+          <span style="font-size: 0.75rem; color: #38bdf8; margin-top: 0.25rem; display: block;">
+            Cloudinary will organize uploads into: <code>faizan_vault/idcards</code>, <code>faizan_vault/photos</code>, <code>faizan_vault/videos</code>, <code>faizan_vault/documents</code>.
+          </span>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancelCloudinaryBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="saveCloudinaryBtn">
+            <span>💾</span>
+            <span>Save Cloudinary Settings</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       TOAST NOTIFICATION CONTAINER
+       ========================================================================= -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Load Configuration, Default Data & Application Logic -->
+  <script src="config.js"></script>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
