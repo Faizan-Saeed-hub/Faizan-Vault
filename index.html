@@ -11,6 +11,78 @@
 <body>
 
   <!-- =========================================================================
+       AUTHENTICATION LOCK SCREEN GATEWAY
+       ========================================================================= -->
+  <div class="auth-overlay active" id="authOverlay">
+    <div class="auth-card" id="authCard">
+      <div class="auth-header">
+        <div class="auth-shield-icon">
+          <span>🛡️</span>
+        </div>
+        <h2 class="auth-title">FAIZAN VAULT</h2>
+        <span class="auth-badge">Private Access Only</span>
+        <p class="auth-subtitle">Enter your credentials to unlock Muhammad Faizan's personal archive</p>
+      </div>
+
+      <form id="authLoginForm" class="auth-form" autocomplete="off">
+        <div id="authErrorMsg" class="auth-error-banner" style="display: none;">
+          <span>⚠️</span>
+          <span id="authErrorText">Invalid email or password</span>
+        </div>
+
+        <div class="auth-form-group">
+          <label class="auth-label" for="authEmailInput">Email Address</label>
+          <div class="auth-input-wrapper">
+            <span class="auth-field-icon">✉️</span>
+            <input 
+              type="email" 
+              id="authEmailInput" 
+              class="auth-input" 
+              placeholder="Enter your email address" 
+              autocomplete="off" 
+              autocapitalize="none"
+              spellcheck="false"
+              required
+            >
+          </div>
+        </div>
+
+        <div class="auth-form-group">
+          <label class="auth-label" for="authPasswordInput">Password</label>
+          <div class="auth-input-wrapper">
+            <span class="auth-field-icon">🔒</span>
+            <input 
+              type="password" 
+              id="authPasswordInput" 
+              class="auth-input" 
+              placeholder="Enter your password" 
+              autocomplete="new-password" 
+              required
+            >
+            <button type="button" class="auth-toggle-pwd" id="authTogglePwdBtn" title="Show or hide password">👁️</button>
+          </div>
+        </div>
+
+        <div class="auth-options-row">
+          <label class="auth-remember-label">
+            <input type="checkbox" id="authRememberMe" checked>
+            <span>Remember login session</span>
+          </label>
+        </div>
+
+        <button type="submit" class="btn btn-primary auth-submit-btn" id="authSubmitBtn">
+          <span>🔓</span>
+          <span>Unlock Vault</span>
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        <span>🔒 Protected by Client-Side Vault Security</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
        NAVIGATION BAR
        ========================================================================= -->
   <nav class="navbar" id="mainNavbar">
@@ -39,6 +111,12 @@
           <span class="avatar-circle">MF</span>
           <span class="user-name-label">M. Faizan</span>
         </div>
+
+        <!-- Lock / Logout Button -->
+        <button id="authLogoutBtn" class="btn btn-secondary btn-sm" title="Lock vault & logout">
+          <span>🔒</span>
+          <span>Lock</span>
+        </button>
 
         <!-- Cloudinary Settings Button -->
         <button id="openCloudinaryBtn" class="btn btn-secondary btn-sm" title="Configure Cloudinary Cloud Storage">

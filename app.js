@@ -260,7 +260,20 @@ class VaultixApp {
       uploadProgressBarFill: document.getElementById('uploadProgressBarFill'),
 
       // Toasts
-      toastContainer: document.getElementById('toastContainer')
+      toastContainer: document.getElementById('toastContainer'),
+
+      // Authentication Lock Screen
+      authOverlay: document.getElementById('authOverlay'),
+      authCard: document.getElementById('authCard'),
+      authLoginForm: document.getElementById('authLoginForm'),
+      authEmailInput: document.getElementById('authEmailInput'),
+      authPasswordInput: document.getElementById('authPasswordInput'),
+      authTogglePwdBtn: document.getElementById('authTogglePwdBtn'),
+      authRememberMe: document.getElementById('authRememberMe'),
+      authSubmitBtn: document.getElementById('authSubmitBtn'),
+      authErrorMsg: document.getElementById('authErrorMsg'),
+      authErrorText: document.getElementById('authErrorText'),
+      authLogoutBtn: document.getElementById('authLogoutBtn')
     };
 
     // Cloudinary Config Initialization
@@ -288,6 +301,7 @@ class VaultixApp {
 
       this.setupEventListeners();
       this.updateCloudinaryUIStatus();
+      this.checkAuthStatus();
       this.refreshUI();
       this.showToast('Vault ready. Storage loaded successfully.', 'info');
     } catch (err) {
@@ -460,6 +474,11 @@ class VaultixApp {
       if (e.target === this.dom.cloudinaryModal) this.closeCloudinaryModal();
     });
     this.dom.cloudinaryConfigForm.addEventListener('submit', (e) => this.handleCloudinarySubmit(e));
+
+    // Authentication Event Handlers
+    this.dom.authLoginForm.addEventListener('submit', (e) => this.handleAuthLogin(e));
+    this.dom.authTogglePwdBtn.addEventListener('click', () => this.togglePasswordVisibility());
+    this.dom.authLogoutBtn.addEventListener('click', () => this.handleAuthLogout());
 
     // Keyboard navigation (Escape to close modals)
     document.addEventListener('keydown', (e) => {
@@ -1542,6 +1561,95 @@ class VaultixApp {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
+  }
+
+  // =========================================================================
+  // AUTHENTICATION SYSTEM METHODS
+  // =========================================================================
+  checkAuthStatus() {
+    const isSessionAuth = sessionStorage.getItem('vaultix_auth_session') === 'true';
+    const isLocalAuth = localStorage.getItem('vaultix_auth_session') === 'true';
+
+    // Ensure input fields start clean (no browser prefilled text as requested)
+    this.dom.authEmailInput.value = '';
+    this.dom.authPasswordInput.value = '';
+
+    if (isSessionAuth || isLocalAuth) {
+      this.dom.authOverlay.classList.remove('active');
+    } else {
+      this.dom.authOverlay.classList.add('active');
+    }
+  }
+
+  handleAuthLogin(e) {
+    e.preventDefault();
+
+    const enteredEmail = this.dom.authEmailInput.value.trim().toLowerCase();
+    const enteredPassword = this.dom.authPasswordInput.value;
+
+    // Configured Credentials (from config.js or default fallback)
+    const validEmail = (window.VAULTIX_CONFIG && window.VAULTIX_CONFIG.auth && window.VAULTIX_CONFIG.auth.email 
+      ? window.VAULTIX_CONFIG.auth.email 
+      : 'faizan0687@gmail.com').toLowerCase();
+
+    const validPassword = (window.VAULTIX_CONFIG && window.VAULTIX_CONFIG.auth && window.VAULTIX_CONFIG.auth.password 
+      ? window.VAULTIX_CONFIG.auth.password 
+      : 'Faizan@786');
+
+    if (enteredEmail === validEmail && enteredPassword === validPassword) {
+      // Credentials Match!
+      this.dom.authErrorMsg.style.display = 'none';
+
+      // Save session
+      if (this.dom.authRememberMe.checked) {
+        localStorage.setItem('vaultix_auth_session', 'true');
+      } else {
+        sessionStorage.setItem('vaultix_auth_session', 'true');
+      }
+
+      // Smooth Unlock Transition
+      this.dom.authOverlay.classList.add('unlocking');
+      setTimeout(() => {
+        this.dom.authOverlay.classList.remove('active');
+        this.dom.authOverlay.classList.remove('unlocking');
+        // Clear fields for security
+        this.dom.authEmailInput.value = '';
+        this.dom.authPasswordInput.value = '';
+        this.showToast('Welcome back, Muhammad Faizan!', 'success');
+      }, 450);
+
+    } else {
+      // Invalid Credentials
+      this.dom.authErrorMsg.style.display = 'flex';
+      this.dom.authErrorText.textContent = 'Invalid email or password. Access Denied.';
+      
+      // Trigger card shake animation
+      this.dom.authCard.classList.add('shake');
+      setTimeout(() => {
+        this.dom.authCard.classList.remove('shake');
+      }, 500);
+
+      this.dom.authPasswordInput.value = '';
+      this.dom.authPasswordInput.focus();
+    }
+  }
+
+  handleAuthLogout() {
+    sessionStorage.removeItem('vaultix_auth_session');
+    localStorage.removeItem('vaultix_auth_session');
+
+    this.dom.authEmailInput.value = '';
+    this.dom.authPasswordInput.value = '';
+    this.dom.authErrorMsg.style.display = 'none';
+
+    this.dom.authOverlay.classList.add('active');
+    this.showToast('Vault locked successfully.', 'info');
+  }
+
+  togglePasswordVisibility() {
+    const isPassword = this.dom.authPasswordInput.type === 'password';
+    this.dom.authPasswordInput.type = isPassword ? 'text' : 'password';
+    this.dom.authTogglePwdBtn.textContent = isPassword ? '🙈' : '👁️';
   }
 }
 

@@ -20,7 +20,13 @@ const VAULTIX_CONFIG = {
   uploadPreset: "g6p72bwo",    // Unsigned Upload Preset
   apiKey: "",                 // (Not needed for unsigned upload)
   folderName: "faizan_vault", // Folder created automatically in Cloudinary
-  autoUploadToCloud: true
+  autoUploadToCloud: true,
+
+  // Private Vault Access Credentials
+  auth: {
+    email: "Faizan0687@gmail.com",
+    password: "Faizan@786"
+  }
 };
 
 // Expose to window for global access across the app
