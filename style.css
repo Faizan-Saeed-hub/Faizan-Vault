@@ -2086,4 +2086,15 @@ textarea.form-control {
   40%, 60% { transform: translate3d(6px, 0, 0); }
 }
 
+/* Cloud Sync Spinning Animation */
+@keyframes spinClockwise {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spinning {
+  display: inline-block;
+  animation: spinClockwise 0.85s linear infinite;
+}
+
 
