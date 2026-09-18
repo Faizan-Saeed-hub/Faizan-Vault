@@ -1747,15 +1747,17 @@ textarea.form-control {
 }
 
 /* ==========================================================================
-   RESPONSIVE DESIGN
+   RESPONSIVE MEDIA QUERIES (DESKTOP, TABLET, MOBILE OVERHAUL)
    ========================================================================== */
 @media (max-width: 1080px) {
   .hero-dashboard {
     grid-template-columns: 1fr;
+    gap: 1.8rem;
   }
   
   .showcase-body {
     grid-template-columns: 1fr;
+    gap: 1.8rem;
   }
   
   .id-flip-stage {
@@ -1773,44 +1775,360 @@ textarea.form-control {
   }
 }
 
+/* Tablet & Mobile (<= 768px) */
 @media (max-width: 768px) {
+  html, body {
+    overflow-x: hidden;
+    width: 100%;
+  }
+
   .navbar {
-    padding: 0.8rem 1rem;
+    padding: 0.65rem 0.85rem;
   }
   
   .nav-container {
+    display: flex;
     flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .nav-brand {
+    gap: 0.55rem;
+  }
+
+  .brand-logo-circle {
+    width: 34px;
+    height: 34px;
+    font-size: 1rem;
+  }
+
+  .brand-title {
+    font-size: 1.12rem;
+  }
+
+  .brand-tag-badge {
+    display: none;
   }
   
   .nav-center-search {
     order: 3;
     max-width: 100%;
     width: 100%;
-    margin-top: 0.5rem;
+    margin-top: 0.45rem;
+  }
+
+  .nav-search-input {
+    padding: 0.55rem 0.85rem 0.55rem 2.4rem;
+    font-size: 0.84rem;
+  }
+
+  .search-icon {
+    left: 0.85rem;
+    font-size: 0.85rem;
+  }
+
+  .nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .user-profile-badge {
+    padding: 0.2rem 0.45rem 0.2rem 0.25rem;
+    gap: 0.35rem;
+  }
+
+  .avatar-circle {
+    width: 26px;
+    height: 26px;
+    font-size: 0.68rem;
   }
   
   .main-wrapper {
-    padding: 1.2rem 1rem 4rem 1rem;
+    padding: 0.85rem 0.85rem 3.5rem 0.85rem;
   }
   
   .hero-title {
-    font-size: 1.6rem;
+    font-size: 1.55rem;
+    line-height: 1.3;
+  }
+
+  .hero-subtitle {
+    font-size: 0.88rem;
+    margin-bottom: 1.1rem;
   }
   
+  /* Compact 2x2 Stats Grid on Mobile (No vertical stretching) */
   .stats-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.65rem;
+  }
+
+  .stat-card {
+    padding: 0.85rem 0.95rem;
+    gap: 0.75rem;
+    border-radius: var(--radius-md);
+  }
+
+  .stat-icon-circle {
+    width: 38px;
+    height: 38px;
+    font-size: 1.1rem;
+  }
+
+  .stat-number {
+    font-size: 1.35rem;
+  }
+
+  .stat-label {
+    font-size: 0.68rem;
+  }
+
+  /* Featured ID Card 3D Flip Viewer - Responsive Dimensions */
+  .featured-showcase {
+    padding: 1.15rem 0.95rem;
+    border-radius: var(--radius-lg);
+    margin-bottom: 1.8rem;
+  }
+
+  .showcase-header {
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .showcase-card-title {
+    font-size: 1.3rem;
+  }
+
+  .showcase-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .id-flip-stage {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    aspect-ratio: 85.6 / 54; /* Exact ISO ID-1 ratio (1.585:1) */
+    border-radius: 14px;
+  }
+
+  .id-flip-card-inner {
+    border-radius: 14px;
+  }
+
+  .id-card-face {
+    border-radius: 14px;
+  }
+
+  .id-card-face img,
+  .id-card-face svg {
+    object-fit: contain;
+    background: #090e18;
+  }
+
+  .showcase-actions {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 0.55rem;
+    margin-top: 0.3rem;
+  }
+
+  .showcase-actions .btn {
+    width: 100%;
+    justify-content: center;
+    font-size: 0.82rem;
+    padding: 0.65rem 1rem;
+  }
+
+  /* Gallery Toolbar & Touch-Scrollable Category Filter */
+  .gallery-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .category-filter-pills {
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+    padding: 0.3rem 0.4rem;
+    gap: 0.4rem;
+    width: 100%;
+  }
+
+  .category-filter-pills::-webkit-scrollbar {
+    display: none;
+  }
+
+  .filter-pill {
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding: 0.4rem 0.85rem;
+    font-size: 0.78rem;
+  }
+
+  .gallery-layout-toggle {
+    display: none;
   }
   
+  /* Gallery Grid on Mobile */
   .gallery-grid {
     grid-template-columns: 1fr;
+    gap: 1.15rem;
+  }
+
+  .vault-card {
+    border-radius: var(--radius-md);
+  }
+
+  .card-media-wrapper {
+    height: 200px;
+  }
+
+  .card-content {
+    padding: 1rem;
+  }
+
+  .card-title {
+    font-size: 1.05rem;
+  }
+
+  .card-footer-actions {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .card-btn-pill {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.76rem;
+  }
+
+  /* Modals & Dialogs Mobile Friendly */
+  .modal-backdrop {
+    padding: 0.6rem;
+  }
+
+  .modal-dialog {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: auto;
+    border-radius: var(--radius-lg);
+    max-height: 94vh;
+  }
+
+  .modal-header {
+    padding: 1.1rem 1.2rem;
+  }
+
+  .modal-body {
+    padding: 1.2rem;
+  }
+
+  .modal-footer {
+    padding: 1rem 1.2rem;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .modal-footer .btn {
+    width: 100%;
+    justify-content: center;
   }
   
   .category-picker-row {
     grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
   }
   
   .id-dual-upload-grid {
     grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .id-side-dropzone {
+    height: 140px;
+  }
+
+  /* Lightbox Mobile Adjustments */
+  .lightbox-modal .modal-dialog {
+    max-height: 94vh;
+    height: auto;
+    overflow-y: auto;
+  }
+
+  .lightbox-body {
+    flex-direction: column;
+    height: auto;
+    overflow-y: auto;
+  }
+
+  .lightbox-viewer-stage {
+    min-height: 210px;
+    padding: 0.85rem;
+  }
+
+  .lightbox-id-flip-container {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    aspect-ratio: 85.6 / 54;
+  }
+
+  .lightbox-details-panel {
+    padding: 1.15rem 1rem;
+    max-width: 100%;
+    border-left: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+}
+
+/* Extra Small Phones (<= 480px) */
+@media (max-width: 480px) {
+  .user-name-label {
+    display: none;
+  }
+
+  /* Hide long text on secondary buttons, showing sleek touch icon */
+  #authLogoutBtn span:last-child,
+  #openCloudinaryBtn span:last-child,
+  #syncVaultBtn span:last-child {
+    display: none;
+  }
+
+  #authLogoutBtn,
+  #openCloudinaryBtn,
+  #syncVaultBtn {
+    padding: 0.45rem 0.65rem;
+    font-size: 0.95rem;
+  }
+
+  #openUploadBtn {
+    padding: 0.45rem 0.75rem;
+    font-size: 0.82rem;
+  }
+
+  .auth-card {
+    padding: 1.75rem 1.25rem;
+    border-radius: var(--radius-lg);
+  }
+
+  .auth-title {
+    font-size: 1.35rem;
+  }
+
+  .auth-shield-icon {
+    width: 50px;
+    height: 50px;
+    font-size: 1.5rem;
+    margin-bottom: 0.85rem;
   }
 }
 

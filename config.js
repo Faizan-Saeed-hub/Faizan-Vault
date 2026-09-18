@@ -21,10 +21,10 @@ const VAULTIX_CONFIG = {
     password: "Faizan@786"
   },
 
-  // Supabase Real-Time Cross-Device Sync Engine
+  // Dedicated Supabase Cloud Database Sync Engine
   supabase: {
-    url: "https://srrpewuenwnusmxmazho.supabase.co",
-    anonKey: "sb_publishable_nwlnnKZxEUEWPjNRzaX3PQ_a7_fd7-x"
+    url: "https://pwgxrjfibrkfpqnqzsrj.supabase.co",
+    anonKey: "sb_publishable_fpvJ3xPOOSaV0Uc6Y0GV4Q_t0W46vKd"
   }
 };
 
