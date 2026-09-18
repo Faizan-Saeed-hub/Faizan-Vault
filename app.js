@@ -1022,10 +1022,17 @@ class VaultixApp {
       `;
 
     } else if (item.category === 'document') {
-      // PDF or Document interactive in-app viewer
-      const pdfSourceUrl = item.localDataUrl ? this.createBlobUrlFromData(item.localDataUrl) : item.fileUrl;
-      const hasCloudinaryPdf = item.fileUrl && item.fileUrl.includes('res.cloudinary.com') && item.fileUrl.toLowerCase().endsWith('.pdf');
-      const cloudJpgThumb = hasCloudinaryPdf ? item.fileUrl.replace(/\.pdf(\?.*)?$/i, '.jpg') : '';
+      // PDF or Document viewer
+      const hasLocalData = Boolean(item.localDataUrl);
+      const isCloudinaryPdf = item.fileUrl && item.fileUrl.includes('res.cloudinary.com') && item.fileUrl.toLowerCase().endsWith('.pdf');
+      const cloudJpgThumb = isCloudinaryPdf ? item.fileUrl.replace(/\.pdf(\?.*)?$/i, '.jpg') : '';
+
+      // If we have local blob data, we can safely embed the iframe.
+      // If it is a remote Cloudinary PDF without local data, embedding the .pdf URL
+      // triggers IDM download interception and Cloudinary 401 basic auth (producing the blank white box).
+      // In that case, we render Cloudinary's high-definition page image which loads instantly without any auth!
+      const renderAsImage = !hasLocalData && Boolean(cloudJpgThumb);
+      const pdfBlobUrl = hasLocalData ? this.createBlobUrlFromData(item.localDataUrl) : item.fileUrl;
 
       stage.innerHTML = `
         <div class="pdf-viewer-wrapper">
@@ -1034,35 +1041,83 @@ class VaultixApp {
               <span class="pdf-header-icon">📑</span>
               <div>
                 <div class="pdf-header-title">${this.escapeHtml(item.title)}</div>
-                <div class="pdf-header-sub">Interactive In-App PDF Reader • ${item.fileSize || 'PDF Document'}</div>
+                <div class="pdf-header-sub">
+                  ${renderAsImage ? 'High-Definition Document View' : 'Interactive In-App PDF Reader'} • ${item.fileSize || 'Document'}
+                </div>
               </div>
             </div>
             <div class="pdf-header-actions">
-              <button class="btn btn-primary btn-sm" id="lightboxPdfDownloadDirectBtn" title="Instant Direct Download (No Password Required)">
+              <button class="btn btn-primary btn-sm" id="lightboxPdfDownloadDirectBtn" title="Instant Direct Download (No Credentials Prompt)">
                 <span>⬇️</span>
-                <span>Download PDF</span>
+                <span>Download File</span>
               </button>
               <button class="btn btn-secondary btn-sm" id="lightboxPdfPrintBtn" title="Print Document">
                 <span>🖨️</span>
                 <span>Print</span>
               </button>
-              <a href="${pdfSourceUrl}" target="_blank" class="btn btn-secondary btn-sm" title="Open in New Window">
-                <span>↗️</span>
-                <span>Full Tab</span>
-              </a>
+              ${renderAsImage ? `
+                <a href="${cloudJpgThumb}" target="_blank" class="btn btn-secondary btn-sm" title="Open Full High-Res Document in New Tab">
+                  <span>↗️</span>
+                  <span>Full View</span>
+                </a>
+              ` : `
+                <a href="${pdfBlobUrl}" target="_blank" class="btn btn-secondary btn-sm" title="Open in New Window">
+                  <span>↗️</span>
+                  <span>Full Tab</span>
+                </a>
+              `}
             </div>
           </div>
-          <div class="pdf-frame-container">
-            <iframe id="pdfEmbeddedIframe" src="${pdfSourceUrl}#toolbar=1&navpanes=1" title="${this.escapeHtml(item.title)}" allowfullscreen></iframe>
+
+          <div class="pdf-frame-container" id="pdfViewerStageContent">
+            ${renderAsImage ? `
+              <div class="pdf-image-stage" id="pdfImageStage">
+                <img src="${cloudJpgThumb}" alt="${this.escapeHtml(item.title)}" id="pdfPageImg" class="pdf-page-display-img" />
+                <div class="viewer-controls-bar">
+                  <button class="viewer-tool-btn" id="pdfZoomOutBtn" title="Zoom Out">➖</button>
+                  <button class="viewer-tool-btn" id="pdfZoomResetBtn" title="Reset Zoom">🔍 100%</button>
+                  <button class="viewer-tool-btn" id="pdfZoomInBtn" title="Zoom In">➕</button>
+                </div>
+              </div>
+            ` : `
+              <iframe id="pdfEmbeddedIframe" src="${pdfBlobUrl}#toolbar=1&navpanes=1" title="${this.escapeHtml(item.title)}" allowfullscreen></iframe>
+            `}
           </div>
-          ${!item.localDataUrl && hasCloudinaryPdf ? `
+
+          ${renderAsImage ? `
             <div class="pdf-fallback-notice">
-              <span>💡 <strong>Cloudinary Notice:</strong> If your download prompts for username/password, Cloudinary has restricted PDF delivery enabled by default. Uncheck "PDF and ZIP files delivery: Restricted" in Cloudinary Settings ➔ Security, or re-upload the document for offline instant download.</span>
-              ${cloudJpgThumb ? `<a href="${cloudJpgThumb}" target="_blank" style="color:#38bdf8; text-decoration:underline; font-weight:600;">View Page 1 Preview Image ↗</a>` : ''}
+              <span>💡 <strong>Cloudinary Direct PDF Tip:</strong> To download raw <code>.pdf</code> files from Cloudinary without IDM asking for username/password, uncheck <em>"PDF and ZIP files delivery: Restricted"</em> in Cloudinary Settings ➔ Security. All files download cleanly above without credentials!</span>
             </div>
           ` : ''}
         </div>
       `;
+
+      if (renderAsImage) {
+        let docZoomLevel = 1;
+        const pageImg = document.getElementById('pdfPageImg');
+        const zoomInBtn = document.getElementById('pdfZoomInBtn');
+        const zoomOutBtn = document.getElementById('pdfZoomOutBtn');
+        const zoomResetBtn = document.getElementById('pdfZoomResetBtn');
+
+        if (zoomInBtn && pageImg) {
+          zoomInBtn.addEventListener('click', () => {
+            docZoomLevel = Math.min(3, docZoomLevel + 0.25);
+            pageImg.style.transform = `scale(${docZoomLevel})`;
+          });
+        }
+        if (zoomOutBtn && pageImg) {
+          zoomOutBtn.addEventListener('click', () => {
+            docZoomLevel = Math.max(0.5, docZoomLevel - 0.25);
+            pageImg.style.transform = `scale(${docZoomLevel})`;
+          });
+        }
+        if (zoomResetBtn && pageImg) {
+          zoomResetBtn.addEventListener('click', () => {
+            docZoomLevel = 1;
+            pageImg.style.transform = 'scale(1)';
+          });
+        }
+      }
 
       const directDownloadBtn = document.getElementById('lightboxPdfDownloadDirectBtn');
       if (directDownloadBtn) {
@@ -1074,17 +1129,29 @@ class VaultixApp {
       const printBtn = document.getElementById('lightboxPdfPrintBtn');
       if (printBtn) {
         printBtn.addEventListener('click', () => {
-          const iframe = document.getElementById('pdfEmbeddedIframe');
-          if (iframe && iframe.contentWindow) {
-            try {
-              iframe.contentWindow.focus();
-              iframe.contentWindow.print();
-              return;
-            } catch (err) {
-              console.warn('Iframe print blocked, opening window', err);
+          if (renderAsImage) {
+            const printWin = window.open('', '_blank');
+            printWin.document.write(`
+              <!DOCTYPE html>
+              <html>
+              <head><title>${item.title}</title><style>@page { size: A4 portrait; margin: 10mm; } body { margin:0; display:flex; justify-content:center; align-items:center; background:#fff; } img { max-width:100%; max-height:96vh; object-fit:contain; }</style></head>
+              <body><img src="${cloudJpgThumb}" onload="setTimeout(() => window.print(), 400);" /></body>
+              </html>
+            `);
+            printWin.document.close();
+          } else {
+            const iframe = document.getElementById('pdfEmbeddedIframe');
+            if (iframe && iframe.contentWindow) {
+              try {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+                return;
+              } catch (err) {
+                console.warn('Iframe print blocked, opening window', err);
+              }
             }
+            window.open(pdfBlobUrl, '_blank');
           }
-          window.open(pdfSourceUrl, '_blank');
         });
       }
     }
@@ -1574,11 +1641,43 @@ class VaultixApp {
         return;
       }
 
+      // If it is a Cloudinary document without localDataUrl (like items uploaded earlier):
+      // Fetch the high-res Cloudinary page image and download as a local Blob so IDM never prompts for auth!
+      if (item.category === 'document' && item.fileUrl && item.fileUrl.includes('res.cloudinary.com')) {
+        const cloudImgUrl = item.fileUrl.replace(/\.pdf(\?.*)?$/i, '.jpg');
+        this.downloadDocumentFromCloudinary(cloudImgUrl, filename);
+        return;
+      }
+
       // If remote / Cloudinary URL
       if (item.fileUrl) {
         this.downloadFile(item.fileUrl, filename);
       }
     }
+  }
+
+  async downloadDocumentFromCloudinary(imgUrl, filename) {
+    this.showToast('Downloading document file...', 'info');
+    try {
+      const response = await fetch(imgUrl);
+      if (response.ok) {
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        const nameWithoutExt = filename.replace(/\.[^/.]+$/, "");
+        a.download = `${nameWithoutExt}.jpg`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
+        this.showToast(`Downloaded: ${a.download}`, 'success');
+        return;
+      }
+    } catch (err) {
+      console.warn('Could not fetch cloud image as blob, opening directly', err);
+    }
+    window.open(imgUrl, '_blank');
   }
 
   async downloadIdCardCombinedImage(item) {
